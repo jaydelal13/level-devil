@@ -2127,12 +2127,9 @@ function buildLevelGrid() {
   const grid = document.getElementById("level-grid");
   grid.innerHTML = "";
   const done = getDone();
-  let unlockedUpTo = 0;
-  for (let i = 0; i < LEVELS.length; i++) { if (done[i]) unlockedUpTo = i + 1; }
   for (let i = 0; i < LEVELS.length; i++) {
     const b = document.createElement("button");
     b.textContent = i + 1;
-    b.disabled = i > unlockedUpTo;
     if (done[i]) b.classList.add("done");
     b.addEventListener("click", () => startGame(i));
     grid.appendChild(b);
