@@ -21,6 +21,19 @@
 <div id="stage">
   <canvas id="game" width="960" height="540"></canvas>
 
+  <!-- FX MODE SELECTOR -->
+  <div id="fx-menu">
+    <div class="menu-inner">
+      <h1 class="fx-title">CHOOSE YOUR FX</h1>
+      <p class="subtitle">pick how loud the devil should be</p>
+      <div class="fx-options">
+        <button class="fx-option" data-fx-mode="no">NO / LITTLE FX</button>
+        <button class="fx-option" data-fx-mode="normal">NORMAL FX</button>
+        <button class="fx-option" data-fx-mode="overboard">OVERBOARD FX</button>
+      </div>
+    </div>
+  </div>
+
   <!-- HUD -->
   <div id="hud" class="hidden">
     <div class="hud-left">
@@ -34,7 +47,7 @@
   </div>
 
   <!-- MENU -->
-  <div id="menu">
+  <div id="menu" class="hidden">
     <div class="menu-inner">
       <div class="devil-face">
         <div class="horn left"></div>
@@ -97,6 +110,10 @@
 }
 </script>
 <script type="module" src="analytics.js"></script>
+<script src="fx-core.js"></script>
+<script src="fx-no.js"></script>
+<script src="fx-normal.js"></script>
+<script src="fx-overboard.js"></script>
 <script src="game.js"></script>
 </body>
 </html>
