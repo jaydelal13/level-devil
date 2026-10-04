@@ -136,6 +136,21 @@ canvas#game {
   opacity: 0.85;
 }
 .hud-right { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+#hud-time { min-width: 42px; font-variant-numeric: tabular-nums; }
+.hud-menu-btn {
+  pointer-events: auto;
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--glass);
+  color: var(--fg);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.hud-menu-btn:hover { border-color: var(--accent); color: var(--accent); }
 .skull { font-size: 18px; opacity: 0.8; }
 .hint {
   margin-left: 10px;
@@ -292,13 +307,27 @@ button#play-btn:active, button#end-menu-btn:active {
   text-transform: uppercase;
   color: var(--muted);
 }
+.back-btn {
+  align-self: flex-start;
+  margin: 4px 0 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.back-btn:hover { border-color: var(--accent); color: var(--accent); }
 
 /* level grid (handles 30+ levels) */
 #level-grid {
   display: grid;
-  grid-template-columns: repeat(10, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 8px;
-  width: min(440px, 88%);
+  width: min(300px, 88%);
 }
 #level-grid button {
   aspect-ratio: 1;
@@ -323,6 +352,24 @@ button#play-btn:active, button#end-menu-btn:active {
 }
 
 .menu-deaths { margin: 22px 0 4px; color: var(--muted); font-size: 13px; font-weight: 600; }
+.history-title {
+  margin: 16px 0 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.history-wrap { width: min(440px, 88%); overflow-x: auto; }
+#history-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+#history-table th, #history-table td { padding: 4px 8px; border-bottom: 1px solid var(--line); text-align: center; }
+#history-table th { color: var(--fg); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
 .controls-hint { margin: 4px 0 0; color: var(--muted); font-size: 12px; opacity: 0.7; }
 
 /* end screen */
@@ -403,6 +450,6 @@ button#play-btn:active, button#end-menu-btn:active {
   .devil-face { transform: scale(0.85); }
 }
 @media (max-height: 560px) and (pointer: coarse) {
-  .grid-label, #level-grid, .menu-deaths, .controls-hint { display: none; }
+  .grid-label, #level-grid, .menu-deaths, .history-title, .history-wrap, .controls-hint { display: none; }
   .subtitle { margin-bottom: 14px; }
 }

@@ -42,6 +42,8 @@
     </div>
     <div class="hud-right">
       <span class="skull">&#9760;</span><span id="hud-deaths">0</span>
+      <span id="hud-time">0:00</span>
+      <button id="hud-menu-btn" class="hud-menu-btn" aria-label="Return to menu">MENU</button>
       <span class="hint">R&nbsp;restart</span>
     </div>
   </div>
@@ -61,9 +63,17 @@
       <h1 class="title"><span class="t-fable">FABLE</span><span class="t-devil">DEVIL</span></h1>
       <p class="subtitle">a clean little rage game. promise. <span class="wink">;)</span></p>
       <button id="play-btn">PLAY</button>
+      <button id="back-fx-btn" class="back-btn" aria-label="Back to FX selection">&#8592; FX</button>
       <div class="grid-label">levels</div>
       <div id="level-grid"></div>
-      <p class="menu-deaths">total deaths: <span id="menu-deaths">0</span></p>
+      <p class="menu-deaths">deaths last run: <span id="menu-deaths">0</span></p>
+      <div class="history-title">recent plays</div>
+      <div class="history-wrap">
+        <table id="history-table">
+          <thead><tr><th>deaths</th><th>level</th><th>time</th><th>complete</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
       <p class="controls-hint">&larr; &rarr; / A D move &nbsp;&middot;&nbsp; &uarr; / W / SPACE jump &nbsp;&middot;&nbsp; T theme</p>
     </div>
   </div>
@@ -114,6 +124,7 @@
 <script src="fx-no.js"></script>
 <script src="fx-normal.js"></script>
 <script src="fx-overboard.js"></script>
+<script src="metrics.js"></script>
 <script src="game.js"></script>
 </body>
 </html>
