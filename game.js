@@ -612,7 +612,7 @@ class Spring {
       p.vy = this.power;
       p.grounded = false;
       this.c = 1;
-      AudioFX.bounce();
+      AudioFX.bounce({ x: this.x + this.w / 2, y: this.y });
       spawnDust(this.x + this.w / 2, this.y, 6);
     }
   }
@@ -785,7 +785,7 @@ class Teleporter {
       p.y = to.y + to.h - p.h;
       p.vx = 0;
       this.cool = 0.45;
-      AudioFX.poof();
+      AudioFX.poof({ x: from.x + from.w / 2, y: from.y + from.h / 2 });
       spawnPoof(to.x + to.w / 2, to.y + to.h / 2);
     };
     if (aabb(p, this.a)) warp(this.a, this.b);
@@ -1063,7 +1063,7 @@ class Door {
         this.i++;
         this.poofT = 0.25;
         spawnPoof(this.pos.x + this.w / 2, this.pos.y + this.h / 2);
-        AudioFX.poof();
+        AudioFX.poof({ x: this.pos.x + this.w / 2, y: this.pos.y + this.h / 2 });
         if (this.i === this.positions.length - 1) AudioFX.laugh();
       }
     }
@@ -1696,7 +1696,7 @@ const Game = {
     this.deaths++;
     saveProgress();
     updateDeathHud();
-    AudioFX.death();
+    AudioFX.death({ x, y });
     spawnBlood(x, y);
     addStain(x, Math.min(y + 20, 478));
     this.shake(9, 0.3);
@@ -1730,6 +1730,7 @@ const Game = {
     this.shakeT = Math.max(0, this.shakeT - dt);
     if (this.shakeT <= 0) this.shakeAmt = 0;
     updateParticles(dt);
+    FableFX.update(dt, this);
 
     if (this.wipeDir === 0 && this.wipe === 1 && this.wipeNext) {
       const next = this.wipeNext;
@@ -1804,7 +1805,7 @@ const Game = {
       p.coyote = 0;
       p.jumping = true;
       jumpBuffered = 0;
-      AudioFX.jump();
+      AudioFX.jump({ x: p.x + p.w / 2, y: p.y + p.h });
       spawnDust(p.x + p.w / 2, p.y + p.h, 4);
     }
     if (p.vy >= 0) p.jumping = false;
@@ -1832,7 +1833,11 @@ const Game = {
         if (p.vy > 0) {
           p.y = s.y - p.h;
           p.grounded = true;
-          if (!wasGrounded && p.vy > 350) { AudioFX.land(); spawnDust(p.x + p.w / 2, p.y + p.h, 5); p.squash = 0.12; }
+          if (!wasGrounded && p.vy > 350) {
+            AudioFX.land({ x: p.x + p.w / 2, y: p.y + p.h });
+            spawnDust(p.x + p.w / 2, p.y + p.h, 5);
+            p.squash = 0.12;
+          }
           p.vy = 0;
         } else if (p.vy < 0) {
           p.y = s.y + s.h;
@@ -1859,7 +1864,7 @@ const Game = {
       this.deaths++;
       saveProgress();
       updateDeathHud();
-      AudioFX.death();
+      AudioFX.death({ x: p.x + p.w / 2, y: p.y + p.h / 2 });
       this.state = "dead";
       this.deathT = 0;
       this.deathLine = FableFX.deathMessage();
@@ -1942,6 +1947,8 @@ const Game = {
         ctx.fillText(this.levelIndex + 1 >= LEVELS.length ? "WHAT?!" : "FINE. NEXT.", W / 2, H / 2 - 40);
         ctx.globalAlpha = 1;
       }
+
+      FableFX.drawOverlay(ctx, theme, W, H, FONT);
     }
     ctx.restore();
 
