@@ -49,61 +49,6 @@ function applyTheme(mode, save = true) {
 function currentMode() { return document.documentElement.getAttribute("data-theme") || "dark"; }
 function toggleTheme() { applyTheme(currentMode() === "dark" ? "light" : "dark"); }
 
-// ---------------------------------------------------------------- audio
-const AudioFX = (() => {
-  let ac = null, muted = false;
-  const ensure = () => {
-    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
-    if (ac.state === "suspended") ac.resume();
-    return ac;
-  };
-  function tone(freq, dur, type = "square", vol = 0.12, slide = 0) {
-    if (muted) return;
-    const a = ensure();
-    const o = a.createOscillator(), g = a.createGain();
-    o.type = type;
-    o.frequency.setValueAtTime(freq, a.currentTime);
-    if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(30, freq + slide), a.currentTime + dur);
-    g.gain.setValueAtTime(vol, a.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.0001, a.currentTime + dur);
-    o.connect(g).connect(a.destination);
-    o.start();
-    o.stop(a.currentTime + dur + 0.02);
-  }
-  function noise(dur, vol = 0.25, lp = 900) {
-    if (muted) return;
-    const a = ensure();
-    const len = Math.floor(a.sampleRate * dur);
-    const buf = a.createBuffer(1, len, a.sampleRate);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
-    const src = a.createBufferSource();
-    src.buffer = buf;
-    const f = a.createBiquadFilter();
-    f.type = "lowpass"; f.frequency.value = lp;
-    const g = a.createGain(); g.gain.value = vol;
-    src.connect(f).connect(g).connect(a.destination);
-    src.start();
-  }
-  return {
-    init: ensure,
-    jump: () => tone(330, 0.12, "square", 0.08, 260),
-    land: () => noise(0.06, 0.10, 500),
-    death: () => { noise(0.25, 0.3, 700); tone(160, 0.3, "sawtooth", 0.14, -110); },
-    pop: () => tone(700, 0.07, "square", 0.09, 300),
-    rumble: () => noise(0.35, 0.22, 220),
-    slam: () => { noise(0.18, 0.3, 350); tone(90, 0.18, "sine", 0.2, -40); },
-    poof: () => tone(500, 0.16, "triangle", 0.1, -320),
-    bounce: () => tone(300, 0.18, "sine", 0.12, 520),
-    zap: () => { tone(1200, 0.12, "sawtooth", 0.07, -700); noise(0.07, 0.1, 1600); },
-    beep: () => tone(900, 0.04, "square", 0.04),
-    win: () => { [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.16, "square", 0.09), i * 90)); },
-    laugh: () => { [300, 260, 300, 260, 220].forEach((f, i) => setTimeout(() => tone(f, 0.09, "sawtooth", 0.06), i * 110)); },
-    toggleMute: () => { muted = !muted; return muted; },
-    isMuted: () => muted,
-  };
-})();
-
 // ---------------------------------------------------------------- input
 const keys = {};
 let jumpBuffered = 0;
@@ -132,6 +77,7 @@ const heldJump = () => keys["Space"] || keys["ArrowUp"] || keys["KeyW"] || touch
 // ---------------------------------------------------------------- particles
 const particles = [];
 function spawnBlood(x, y) {
+  if (!FableFX.allows("particles")) return;
   for (let i = 0; i < 26; i++) {
     const a = rand(-Math.PI, 0), s = rand(120, 420);
     particles.push({
@@ -142,6 +88,7 @@ function spawnBlood(x, y) {
   }
 }
 function spawnDust(x, y, n = 6, color = null) {
+  if (!FableFX.allows("particles")) return;
   for (let i = 0; i < n; i++) {
     particles.push({
       x: x + rand(-10, 10), y, vx: rand(-60, 60), vy: rand(-90, -20),
@@ -150,6 +97,7 @@ function spawnDust(x, y, n = 6, color = null) {
   }
 }
 function spawnPoof(x, y) {
+  if (!FableFX.allows("particles")) return;
   for (let i = 0; i < 14; i++) {
     const a = rand(0, Math.PI * 2), s = rand(40, 160);
     particles.push({
@@ -159,6 +107,7 @@ function spawnPoof(x, y) {
   }
 }
 function updateParticles(dt) {
+  if (!FableFX.allows("particles")) return;
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
     p.t += dt;
@@ -169,6 +118,7 @@ function updateParticles(dt) {
   }
 }
 function drawParticles() {
+  if (!FableFX.allows("particles")) return;
   for (const p of particles) {
     ctx.globalAlpha = 1 - p.t / p.life;
     ctx.fillStyle = p.color;
@@ -182,6 +132,7 @@ function drawParticles() {
 // ---------------------------------------------------------------- blood stains (persist until respawn)
 let stains = [];
 function addStain(x, y) {
+  if (!FableFX.allows("particles")) return;
   for (let i = 0; i < 8; i++) stains.push({ x: x + rand(-26, 26), y: y + rand(-4, 4), r: rand(3, 9) });
 }
 
@@ -1065,7 +1016,7 @@ class FakeDoor {
   kills() { return this.out > 0.4 ? [R(this.x - 6, this.y, this.w + 12, this.h)] : []; }
   draw() {
     drawDoorShape(this.x, this.y, this.w, this.h);
-    if (this.label) {
+    if (this.label && FableFX.allows("labels")) {
       ctx.fillStyle = theme.ink;
       ctx.globalAlpha = 0.45;
       ctx.font = `italic 15px ${FONT}`;
@@ -1141,6 +1092,7 @@ class Note {
   }
   reset() {} update() {} solids() { return []; } kills() { return []; }
   draw() {
+    if (!FableFX.allows("labels")) return;
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
@@ -1191,6 +1143,7 @@ const LEVELS = [
       ],
     }),
   },
+  /*
   // ---------------------------------------------------- 3
   {
     name: "POINTY SITUATION",
@@ -1510,6 +1463,7 @@ const LEVELS = [
       ],
     }),
   },
+  */
   // ---------------------------------------------------- 23 (NEW: blink + saw)
   {
     name: "PEEKABOO",
@@ -1527,6 +1481,7 @@ const LEVELS = [
       ],
     }),
   },
+  /*
   // ---------------------------------------------------- 24 (NEW: turret + laser)
   {
     name: "CROSSFIRE",
@@ -1577,6 +1532,7 @@ const LEVELS = [
       ],
     }),
   },
+  */
   // ---------------------------------------------------- 27 (NEW: mixed sampler)
   {
     name: "KITCHEN SINK",
@@ -1640,6 +1596,7 @@ const LEVELS = [
       ],
     }),
   },
+  /*
   // ---------------------------------------------------- 30 (NEW: finale)
   {
     name: "THE FINAL FABLE",
@@ -1664,6 +1621,7 @@ const LEVELS = [
       ],
     }),
   },
+  */
 ];
 
 const DEATH_LINES = [
@@ -1698,7 +1656,11 @@ const Game = {
   wipeNext: null,
   time: 0,
 
-  shake(amt, t) { this.shakeAmt = Math.max(this.shakeAmt, amt); this.shakeT = Math.max(this.shakeT, t); },
+  shake(amt, t) {
+    if (!FableFX.allows("camera")) return;
+    this.shakeAmt = Math.max(this.shakeAmt, amt);
+    this.shakeT = Math.max(this.shakeT, t);
+  },
 
   loadLevel(i) {
     this.levelIndex = i;
@@ -1709,7 +1671,7 @@ const Game = {
     this.spawnPlayer();
     stains = [];
     particles.length = 0;
-    document.getElementById("hud-levelname").textContent = def.name;
+    document.getElementById("hud-levelname").textContent = FableFX.allows("labels") ? def.name : "";
     document.getElementById("hud-levelnum").textContent = i + 1;
   },
 
@@ -1740,7 +1702,7 @@ const Game = {
     this.shake(9, 0.3);
     this.state = "dead";
     this.deathT = 0;
-    this.deathLine = DEATH_LINES[Math.floor(Math.random() * DEATH_LINES.length)];
+    this.deathLine = FableFX.deathMessage();
   },
 
   winLevel() {
@@ -1752,13 +1714,29 @@ const Game = {
     localStorage.setItem("fd_done", JSON.stringify(done));
   },
 
-  startWipe(cb) { this.wipeDir = 1; this.wipeNext = cb; },
+  startWipe(cb) {
+    if (!FableFX.allows("transitions")) {
+      this.wipe = 1;
+      this.wipeDir = 0;
+      this.wipeNext = cb;
+      return;
+    }
+    this.wipeDir = 1;
+    this.wipeNext = cb;
+  },
 
   update(dt) {
     this.time += dt;
     this.shakeT = Math.max(0, this.shakeT - dt);
     if (this.shakeT <= 0) this.shakeAmt = 0;
     updateParticles(dt);
+
+    if (this.wipeDir === 0 && this.wipe === 1 && this.wipeNext) {
+      const next = this.wipeNext;
+      this.wipeNext = null;
+      this.wipe = 0;
+      next();
+    }
 
     if (this.wipeDir !== 0) {
       this.wipe += this.wipeDir * dt * 3;
@@ -1884,7 +1862,7 @@ const Game = {
       AudioFX.death();
       this.state = "dead";
       this.deathT = 0;
-      this.deathLine = DEATH_LINES[Math.floor(Math.random() * DEATH_LINES.length)];
+      this.deathLine = FableFX.deathMessage();
       this.shake(6, 0.25);
       return;
     }
@@ -1911,15 +1889,17 @@ const Game = {
       for (let y = 0; y <= H; y += 48) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
       ctx.stroke();
 
-      ctx.save();
-      ctx.globalAlpha = 0.55;
-      ctx.fillStyle = theme.blood;
-      for (const s of stains) {
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-        ctx.fill();
+      if (FableFX.allows("particles")) {
+        ctx.save();
+        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = theme.blood;
+        for (const s of stains) {
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
       }
-      ctx.restore();
 
       this.level.door.draw();
 
@@ -1953,7 +1933,7 @@ const Game = {
         ctx.globalAlpha = 1;
       }
 
-      if (this.state === "win" || this.state === "betweenLevels") {
+      if (FableFX.allows("winText") && (this.state === "win" || this.state === "betweenLevels")) {
         const a = clamp(this.winT * 5, 0, 1);
         ctx.globalAlpha = a;
         ctx.fillStyle = theme.accent;
@@ -2053,6 +2033,7 @@ function updateDeathHud() {
 }
 
 const menuEl = document.getElementById("menu");
+const fxMenuEl = document.getElementById("fx-menu");
 const hudEl = document.getElementById("hud");
 const endEl = document.getElementById("end-screen");
 const touchEl = document.getElementById("touch-controls");
@@ -2145,13 +2126,14 @@ function startGame(i) {
   setTouchControlsVisible(true);
   Game.loadLevel(i);
   Game.state = "play";
-  Game.wipe = 1;
-  Game.wipeDir = -1;
+  Game.wipe = FableFX.allows("transitions") ? 1 : 0;
+  Game.wipeDir = FableFX.allows("transitions") ? -1 : 0;
 }
 
 function showMenu() {
   buildLevelGrid();
   updateDeathHud();
+  fxMenuEl.classList.add("hidden");
   menuEl.classList.remove("hidden");
   endEl.classList.add("hidden");
   hudEl.classList.add("hidden");
@@ -2159,7 +2141,28 @@ function showMenu() {
   Game.state = "menu";
 }
 
+function showFXMenu() {
+  fxMenuEl.classList.remove("hidden");
+  menuEl.classList.add("hidden");
+  hudEl.classList.add("hidden");
+  endEl.classList.add("hidden");
+  setTouchControlsVisible(false);
+  Game.state = "menu";
+}
+
+document.querySelectorAll("[data-fx-mode]").forEach((button) => {
+  button.addEventListener("click", () => {
+    FableFX.select(button.dataset.fxMode);
+    showMenu();
+  });
+});
+
 function showEnd() {
+  if (!FableFX.allows("winText")) {
+    showMenu();
+    return;
+  }
+  fxMenuEl.classList.add("hidden");
   hudEl.classList.add("hidden");
   setTouchControlsVisible(false);
   endEl.classList.remove("hidden");
@@ -2182,7 +2185,7 @@ function fit() {
   const cw = Math.round(W * scale), ch = Math.round(H * scale);
   cv.style.width = cw + "px";
   cv.style.height = ch + "px";
-  for (const el of [menuEl, hudEl, endEl]) {
+  for (const el of [fxMenuEl, menuEl, hudEl, endEl]) {
     el.style.width = cw + "px";
     el.style.height = el === hudEl ? "auto" : ch + "px";
     el.style.left = `calc(50% - ${cw / 2}px)`;
@@ -2207,6 +2210,7 @@ loadProgress();
 updateDeathHud();
 buildLevelGrid();
 fit();
+showFXMenu();
 
 // ---------------------------------------------------------------- main loop
 let last = performance.now();
