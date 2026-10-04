@@ -1655,6 +1655,7 @@ const Game = {
   wipeDir: 0,
   wipeNext: null,
   time: 0,
+  run: null,
 
   shake(amt, t) {
     if (!FableFX.allows("camera")) return;
@@ -1669,6 +1670,7 @@ const Game = {
     this.level = def.build();
     this.level.name = def.name;
     this.spawnPlayer();
+    if (this.run) this.run.levelReached = Math.max(this.run.levelReached, i + 1);
     stains = [];
     particles.length = 0;
     document.getElementById("hud-levelname").textContent = FableFX.allows("labels") ? def.name : "";
@@ -1686,7 +1688,11 @@ const Game = {
   },
 
   restartLevel(manual = false) {
-    if (manual) { this.deaths++; saveProgress(); updateDeathHud(); }
+    if (manual) {
+      this.deaths++;
+      if (this.run) this.run.deaths = this.deaths;
+      updateDeathHud();
+    }
     this.loadLevel(this.levelIndex);
     this.state = "play";
   },
@@ -1694,7 +1700,7 @@ const Game = {
   die(x, y) {
     if (this.state !== "play") return;
     this.deaths++;
-    saveProgress();
+    if (this.run) this.run.deaths = this.deaths;
     updateDeathHud();
     AudioFX.death({ x, y });
     spawnBlood(x, y);
@@ -1712,6 +1718,28 @@ const Game = {
     const done = getDone();
     done[this.levelIndex] = true;
     localStorage.setItem("fd_done", JSON.stringify(done));
+    if (this.run && this.levelIndex === LEVELS.length - 1) this.run.completed = true;
+  },
+
+  beginRun(levelIndex = 0) {
+    this.deaths = 0;
+    this.run = PlayMetrics.begin(FableFX.mode);
+    this.run.levelReached = levelIndex + 1;
+    updateDeathHud();
+  },
+
+  updateRunTime() {
+    if (!this.run || this.state === "menu") return;
+    this.run.time = (performance.now() - this.run.startedAt) / 1000;
+    const hudTime = document.getElementById("hud-time");
+    if (hudTime) hudTime.textContent = PlayMetrics.formatTime(this.run.time);
+  },
+
+  finishRun() {
+    if (!this.run) return;
+    this.updateRunTime();
+    this.run.deaths = this.deaths;
+    PlayMetrics.record(this.run);
   },
 
   startWipe(cb) {
@@ -1727,6 +1755,7 @@ const Game = {
 
   update(dt) {
     this.time += dt;
+    this.updateRunTime();
     this.shakeT = Math.max(0, this.shakeT - dt);
     if (this.shakeT <= 0) this.shakeAmt = 0;
     updateParticles(dt);
@@ -1862,7 +1891,7 @@ const Game = {
 
     if (p.y > H + 40) {
       this.deaths++;
-      saveProgress();
+      if (this.run) this.run.deaths = this.deaths;
       updateDeathHud();
       AudioFX.death({ x: p.x + p.w / 2, y: p.y + p.h / 2 });
       this.state = "dead";
@@ -2024,11 +2053,9 @@ function roundRect(x, y, w, h, r) {
 function getDone() {
   try { return JSON.parse(localStorage.getItem("fd_done")) || {}; } catch { return {}; }
 }
-function saveProgress() { localStorage.setItem("fd_deaths", Game.deaths); }
+function saveProgress() {}
 function loadProgress() {
-  let d = localStorage.getItem("fd_deaths");
-  if (d === null) d = localStorage.getItem("ld_deaths"); // migrate from Level Devil
-  Game.deaths = parseInt(d) || 0;
+  Game.deaths = 0;
   if (!localStorage.getItem("fd_done")) {
     const old = localStorage.getItem("ld_done");
     if (old) localStorage.setItem("fd_done", old);
@@ -2039,11 +2066,32 @@ function updateDeathHud() {
   document.getElementById("menu-deaths").textContent = Game.deaths;
 }
 
+function updateHistoryTable() {
+  const body = document.querySelector("#history-table tbody");
+  if (!body) return;
+  body.innerHTML = "";
+  for (const run of PlayMetrics.list(FableFX.mode)) {
+    const row = document.createElement("tr");
+    for (const value of [
+      run.deaths,
+      run.levelReached,
+      PlayMetrics.formatTime(run.time),
+      run.completed ? "yes" : "no",
+    ]) {
+      const cell = document.createElement("td");
+      cell.textContent = value;
+      row.appendChild(cell);
+    }
+    body.appendChild(row);
+  }
+}
+
 const menuEl = document.getElementById("menu");
 const fxMenuEl = document.getElementById("fx-menu");
 const hudEl = document.getElementById("hud");
 const endEl = document.getElementById("end-screen");
 const touchEl = document.getElementById("touch-controls");
+const hudMenuBtn = document.getElementById("hud-menu-btn");
 
 // ---------------------------------------------------------------- topbar controls (theme / mute / fullscreen)
 const SUN_PATH = '<svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="4.4" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5 5l1.9 1.9M17.1 17.1L19 19M19 5l-1.9 1.9M6.9 17.1L5 19"/></g></svg>';
@@ -2127,6 +2175,7 @@ function buildLevelGrid() {
 function startGame(i) {
   AudioFX.init();
   if (IS_TOUCH && !document.fullscreenElement) toggleFullscreen();
+  Game.beginRun(i);
   menuEl.classList.add("hidden");
   endEl.classList.add("hidden");
   hudEl.classList.remove("hidden");
@@ -2138,8 +2187,10 @@ function startGame(i) {
 }
 
 function showMenu() {
+  Game.finishRun();
   buildLevelGrid();
   updateDeathHud();
+  updateHistoryTable();
   fxMenuEl.classList.add("hidden");
   menuEl.classList.remove("hidden");
   endEl.classList.add("hidden");
@@ -2149,6 +2200,11 @@ function showMenu() {
 }
 
 function showFXMenu() {
+  Game.level = null;
+  Game.player = null;
+  Game.wipe = 0;
+  Game.wipeDir = 0;
+  Game.wipeNext = null;
   fxMenuEl.classList.remove("hidden");
   menuEl.classList.add("hidden");
   hudEl.classList.add("hidden");
@@ -2163,6 +2219,9 @@ document.querySelectorAll("[data-fx-mode]").forEach((button) => {
     showMenu();
   });
 });
+
+hudMenuBtn.addEventListener("click", showMenu);
+document.getElementById("back-fx-btn").addEventListener("click", showFXMenu);
 
 function showEnd() {
   if (!FableFX.allows("winText")) {
